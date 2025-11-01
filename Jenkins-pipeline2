@@ -1,0 +1,15 @@
+
+stage('Code') {
+    steps {
+        git branch: 'master', url: 'https://github.com/ThrineshJogu/Eks-project.git'
+    }
+}
+
+stage('Deploy') {
+    steps {
+        withKubeConfig(credentialsId: 'your-kubeconfig-credentials-id') {
+            sh 'kubectl apply -f manifests/'
+        }
+    }
+}
+
