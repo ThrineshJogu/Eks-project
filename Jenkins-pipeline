@@ -29,5 +29,67 @@ pipeline {
                 }
             }
         }
+
+        stage('Build') {
+            steps {
+                sh 'mvn clean package'
+                sh 'cp -r target Docker-app'
+            }
+        }
+
+        stage('OWASP') {
+            steps {
+                dependencyCheck additionalArguments: '--scan ./ --format HTML --out .'
+                dependencyCheckPublisher pattern: '**/dependency-check-report.html'
+            }
+        }
+
+        stage('Artifact') {
+            steps {
+                echo 'Archiving build artifacts...'
+                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+            }
+        }
+
+        stage('ImageBuild') {
+            steps {
+                sh 'docker build -t appimage Docker-app'
+                sh 'docker build -t dbimage Docker-db'
+            }
+        }
+
+        stage('TrivyScan') {
+            steps {
+                sh 'trivy image appimage || true'
+                sh 'trivy image dbimage || true'
+            }
+        }
+
+        stage('Tag & Push') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'dockerhub') {
+                        sh 'docker tag appimage shaikmustafa/socialmedia:app'
+                        sh 'docker tag dbimage shaikmustafa/socialmedia:db'
+                        sh 'docker push shaikmustafa/socialmedia:app'
+                        sh 'docker push shaikmustafa/socialmedia:db'
+                    }
+                }
+            }
+        }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
