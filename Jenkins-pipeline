@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    tools {
+        maven 'mymaven'
+    }
+
     stages {
         stage('Clean Workspace') {
             steps {
@@ -39,15 +43,14 @@ pipeline {
 
         stage('OWASP') {
             steps {
-                dependencyCheck additionalArguments: '--scan ./ --format HTML --out .'
+                dependencyCheck additionalArguments: '--scan ./ --format HTML --out .', odcInstallation: 'DP-Check'
                 dependencyCheckPublisher pattern: '**/dependency-check-report.html'
             }
         }
 
         stage('Artifact') {
             steps {
-                echo 'Archiving build artifacts...'
-                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+                suntax script
             }
         }
 
@@ -60,8 +63,8 @@ pipeline {
 
         stage('TrivyScan') {
             steps {
-                sh 'trivy image appimage || true'
-                sh 'trivy image dbimage || true'
+                sh 'trivy image appimage'
+                sh 'trivy image dbimage'
             }
         }
 
@@ -69,17 +72,16 @@ pipeline {
             steps {
                 script {
                     withDockerRegistry(credentialsId: 'dockerhub') {
-                        sh 'docker tag appimage shaikmustafa/socialmedia:app'
-                        sh 'docker tag dbimage shaikmustafa/socialmedia:db'
-                        sh 'docker push shaikmustafa/socialmedia:app'
-                        sh 'docker push shaikmustafa/socialmedia:db'
+                        sh 'docker tag appimage thrineshjogu/socialmedia:app'
+                        sh 'docker tag dbimage thrineshjogu/socialmedia:db'
+                        sh 'docker push thrineshjogu/socialmedia:app'
+                        sh 'docker push thrineshjogu/socialmedia:db'
                     }
                 }
             }
         }
     }
 }
-
 
 
 
