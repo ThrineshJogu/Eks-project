@@ -25,7 +25,6 @@ pipeline {
                 }
             }
         }
-
         stage('QualityGates') {
             steps {
                 script {
@@ -40,20 +39,18 @@ pipeline {
                 sh 'cp -r target Docker-app'
             }
         }
-
         stage('OWASP') {
             steps {
-                dependencyCheck additionalArguments: '--scan ./ --format HTML --out .', odcInstallation: 'DP-Check'
-                dependencyCheckPublisher pattern: '**/dependency-check-report.html'
+                dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', nvdCredentialsId: 'API-key', odcInstallation: 'owasp'
+                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
             }
         }
 
         stage('Artifact') {
             steps {
-                suntax script
+                s3Upload consoleLogLevel: 'INFO', dontSetBuildResultOnFailure: false, dontWaitForConcurrentBuildCompletion: false, entries: [[bucket: 'thrinesh.jogu.s3.eu', excludedFile: '', flatten: false, gzipFiles: false, keepForever: false, managedArtifacts: false, noUploadOnFailure: true, selectedRegion: 'eu-north-1', showDirectlyInBrowser: false, sourceFile: 'target/vprofile-v2.war', storageClass: 'STANDARD', uploadFromSlave: false, useServerSideEncryption: false]], pluginFailureResultConstraint: 'FAILURE', profileName: 'mybucket', userMetadata: []
             }
         }
-
         stage('ImageBuild') {
             steps {
                 sh 'docker build -t appimage Docker-app'
@@ -67,11 +64,10 @@ pipeline {
                 sh 'trivy image dbimage'
             }
         }
-
-        stage('Tag & Push') {
+         stage('Tag & Push') {
             steps {
                 script {
-                    withDockerRegistry(credentialsId: 'dockerhub') {
+                    withDockerRegistry(credentialsId: 'docker-hub') {
                         sh 'docker tag appimage thrineshjogu/socialmedia:app'
                         sh 'docker tag dbimage thrineshjogu/socialmedia:db'
                         sh 'docker push thrineshjogu/socialmedia:app'
@@ -80,18 +76,13 @@ pipeline {
                 }
             }
         }
+          stage('Deploy') {
+            steps {
+                withKubeCredentials(kubectlCredentials: [[caCertificate: '', clusterName: 'EKS_CLOUD', contextName: '', credentialsId: 'kubernetes-cred', namespace: 'webapps', serverUrl: 'https://88D2925F79DEB3F3876EA9284E1290B6.gr7.eu-north-1.eks.amazonaws.com']]) {
+                    sh 'kubectl apply -f manifests'
+                    sh 'kubectl get all -n webapps'
+                }
+            }
+        } 
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
