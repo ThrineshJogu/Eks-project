@@ -10,8 +10,9 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                withKubeConfig([credentialsId: 'your-kubeconfig-credentials-id']) {
+                withKubeCredentials(kubectlCredentials: [[caCertificate: '',clusterName: 'EKS_CLOUD',contextName: '',credentialsId: 'kubernetes-cred',namespace: 'webapps',serverUrl: 'https://88D2925F79DEB3F3876EA9284E1290B6.gr7.eu-north-1.eks.amazonaws.com']]) {
                     sh 'kubectl apply -f manifests/'
+                    sh 'kubectl get all -n webapps'
                 }
             }
         }
